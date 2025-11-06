@@ -3,7 +3,7 @@ import subprocess
 from typing import Any, Dict
 
 
-def git_pull(repo_path: str, workspace_name: str, git_url: str) -> Dict[str, Any]:
+def git_pull(repo_path: str, workspace_name: str, git_url: str, key_material: str) -> Dict[str, Any]:
     """
     Executes 'git pull' in the specified repository path using a deploy key
     provided via the env var WP_AUTOPULL_SSHKEY.
@@ -21,10 +21,9 @@ def git_pull(repo_path: str, workspace_name: str, git_url: str) -> Dict[str, Any
     if not os.path.exists(repo_path):
         raise FileNotFoundError(f"Repo path does not exist: {repo_path}")
 
-    key_env_name = "WP_AUTOPULL_SSHKEY"
-    key_material = os.environ.get(key_env_name)
+
     if not key_material:
-        raise EnvironmentError(f"Missing env var {key_env_name} with the PRIVATE deploy key")
+        raise EnvironmentError(f"Missing SSH key material for workspace: {workspace_name}")
 
     if "\\n" in key_material and "\n" not in key_material:
         key_material = key_material.replace("\\n", "\n")
@@ -66,5 +65,4 @@ def git_pull(repo_path: str, workspace_name: str, git_url: str) -> Dict[str, Any
         "repo_path": repo_path,
         "git_pull_status": git_status,
         "git_pull_output": git_output.strip(),
-        "key_env_var_used": key_env_name,
     }
