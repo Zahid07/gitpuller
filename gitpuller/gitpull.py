@@ -25,8 +25,17 @@ def git_pull(repo_path: str, workspace_name: str, git_url: str, key_material: st
     if not key_material:
         raise EnvironmentError(f"Missing SSH key material for workspace: {workspace_name}")
 
-    if "\\n" in key_material and "\n" not in key_material:
-        key_material = key_material.replace("\\n", "\n")
+    if key_material:
+        # Remove any quotes that might be wrapping the key
+        key_material = key_material.strip().strip('"').strip("'")
+        
+        # Handle literal \n sequences
+        if "\\n" in key_material:
+            key_material = key_material.replace("\\n", "\n")
+        
+        # Ensure proper line endings
+        if not key_material.endswith("\n"):
+            key_material += "\n"
 
     ssh_dir = os.path.expanduser("~/.ssh")
     key_path = os.path.join(ssh_dir, "gitpuller_deploy_key")
