@@ -1,9 +1,10 @@
 import os
+import requests
 import subprocess
 from typing import Any, Dict
 
 
-def git_pull(repo_path: str, workspace_name: str, git_url: str, key_material: str) -> Dict[str, Any]:
+def git_pull(repo_path: str, workspace_name: str, git_url: str, key_material: str, webhook_url: str) -> Dict[str, Any]:
     """
     Executes 'git pull' in the specified repository path using a deploy key
     provided via the env var WP_AUTOPULL_SSHKEY.
@@ -17,6 +18,38 @@ def git_pull(repo_path: str, workspace_name: str, git_url: str, key_material: st
     """
     print(f"Running git pull for workspace: {workspace_name}")
     print(f"Repo path: {repo_path}")
+
+    repo_name = git_url.split('/')[-1].replace('.git', '')
+
+    if not all([webhook_url]):
+        raise EnvironmentError(
+            "One or more Slack environment variables are missing:\n"
+            "CDM_SLACK_WEBHOOK_URL"
+        )
+
+    payload = {
+        "text": f"Automate Git Pull Pipeline Failed",
+        "blocks": [
+            {
+                "type": "header",
+                "text": {
+                    "type": "plain_text",
+                    "text": f":alert: Automate Git Pull Pipeline Failed :alert:"
+                }
+            },
+            {
+                "type": "divider"
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"*Repository:* `{repo_name}`"
+                }
+            }
+        ]
+    }
+
 
     if not os.path.exists(repo_path):
         raise FileNotFoundError(f"Repo path does not exist: {repo_path}")
@@ -38,7 +71,7 @@ def git_pull(repo_path: str, workspace_name: str, git_url: str, key_material: st
             key_material += "\n"
 
     ssh_dir = os.path.expanduser("~/.ssh")
-    key_path = os.path.join(ssh_dir, "gitpuller_deploy_key")
+    key_path = os.path.join(ssh_dir, "SallaApp_mageai_CI_CD_deploy")
     os.makedirs(ssh_dir, exist_ok=True)
     os.chmod(ssh_dir, 0o700)
 
@@ -63,6 +96,11 @@ def git_pull(repo_path: str, workspace_name: str, git_url: str, key_material: st
     except subprocess.CalledProcessError as e:
         git_output = (e.stdout or "") + (e.stderr or "")
         git_status = "error"
+        payload["blocks"].append({
+        "type": "section",
+        "text": {"type": "mrkdwn", "text": f"*Error Output:*\n```{git_output[:1500]}```"}  # truncate for Slack limit
+        })
+        requests.post(webhook_url, json=payload)
     finally:
         try:
             os.remove(key_path)
