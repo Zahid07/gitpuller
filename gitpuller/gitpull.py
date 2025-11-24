@@ -190,7 +190,6 @@ class GitPullExecutor:
                 last_alert_time = state.get("last_alert_time")
                 if last_alert_time:
                     try:
-                        from datetime import datetime, timedelta
                         last_alert_dt = datetime.fromisoformat(last_alert_time)
                         time_since = datetime.now() - last_alert_dt
                         print(f"🔇 Alert suppressed - same error occurred {time_since} ago (suppression window: {suppression_hours} hour(s))")

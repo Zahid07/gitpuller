@@ -1,22 +1,24 @@
 # gitpuller
 
-This is how to use this
+## Usage
 
-from gitpuller import git_pull, transform_custom
+```python
+from gitpuller import GitPullExecutor
 
-repo_path, base_path = transform_custom()
-result = git_pull(repo_path, "workspace1", "git@github.com:youruser/yourrepo.git", "1234")
-print(result)
+executor = GitPullExecutor(slack_webhook_url="your_webhook_url", use_mage_ai=True)
+result = executor.execute_with_alerting(
+    repo_path="/path/to/repo",
+    git_url="git@github.com:user/repo.git",
+    branch="master",
+    workspace_name="workspace1"
+)
+```
 
+## Build
 
-## New Build
-
-Clean up the orignal build
-
+```bash
 rm -rf build dist *.egg-info
-
-Make a new build
-
 python -m build
+```
 
-Then Upload to PyPi and dont forget to change the version in pyproject.toml
+Upload to PyPI and update version in `pyproject.toml`.

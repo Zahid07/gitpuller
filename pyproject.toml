@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "salla_gitpuller"
-version = "1.0.0"
+version = "1.0.1"
 description = "A lightweight utility to git pull a repository using SSH deploy keys stored in environment variables"
 readme = "README.md"
 authors = [
