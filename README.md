@@ -51,9 +51,9 @@ executor = GitPullExecutor(
 )
 
 result = executor.execute_with_alerting(
-    repo_path="/home/src/partner-mageai",
-    git_url="git@github.com:SallaApp/partner-mageai.git",
-    workspace_name="partner",   # reads the private key from {workspace_name}_SSHKEY
+    repo_path="/home/src/my-repo",
+    git_url="git@github.com:my-org/my-repo.git",
+    workspace_name="myworkspace",   # reads the private key from {workspace_name}_SSHKEY
     # branch omitted -> defaults to "master"
 )
 
@@ -137,15 +137,15 @@ the sync **without** alerting — use this if you handle errors yourself.
 
 ```python
 {
-    "workspace": "partner",
-    "repo_path": "/home/src/partner-mageai",
+    "workspace": "myworkspace",
+    "repo_path": "/home/src/my-repo",
     "git_pull_status": "success",          # or raises on error
     "git_pull_output": "HEAD is now at <sha> <subject>",
     "discarded_changes": {
         "working_tree_changes": "?? stray.txt",      # git status --porcelain output
         "local_commits": "949688e local-only commit" # FETCH_HEAD..HEAD output
     },
-    "key_env_var_used": "partner_SSHKEY",
+    "key_env_var_used": "myworkspace_SSHKEY",
 }
 ```
 
@@ -154,7 +154,7 @@ the sync **without** alerting — use this if you handle errors yourself.
 ## SSH key setup
 
 Provide the **private** deploy key as an environment variable named
-`{workspace_name}_SSHKEY` (e.g. `partner_SSHKEY`), or pass `ssh_key=` directly.
+`{workspace_name}_SSHKEY` (e.g. `myworkspace_SSHKEY`), or pass `ssh_key=` directly.
 The matching public key must be registered as a deploy key on the GitHub repo.
 
 The key may be stored with literal `\n` (single-line) or real newlines — both are
