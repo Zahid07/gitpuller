@@ -1,7 +1,16 @@
+"""Pluggable storage backends for alert-suppression state.
+
+``InMemoryStateManager`` keeps state for the lifetime of the process; the Mage
+variant persists it across pipeline runs via Mage global variables.
+"""
+
 from typing import Any, Dict, Optional
 from datetime import datetime
 
-class StateManager:    
+
+class StateManager:
+    """Abstract interface for persisting per-pipeline alert state."""
+
     def load_alert_state(self, pipeline_uuid: str) -> Dict[str, Any]:
         """Load alert state for a pipeline."""
         raise NotImplementedError
@@ -20,7 +29,11 @@ class StateManager:
         """Clear alert state for a pipeline."""
         raise NotImplementedError
 
-class InMemoryStateManager(StateManager):    
+class InMemoryStateManager(StateManager):
+    """Process-local state. Note: state is lost when the process exits, so
+    alert suppression only works within a single run unless a persistent
+    backend (e.g. Mage) is used."""
+
     def __init__(self):
         self._state: Dict[str, Dict[str, Any]] = {}
     
@@ -55,11 +68,15 @@ class InMemoryStateManager(StateManager):
                 "pipeline_status": "success"
             }
 
-class MageAIStateManager(StateManager):    
+class MageAIStateManager(StateManager):
+    """Persists alert state across runs using Mage AI global variables."""
+
     def __init__(self):
+        # Import lazily so the package works outside a Mage environment;
+        # AlertManager catches this ImportError to fall back to in-memory.
         try:
             from mage_ai.data_preparation.variable_manager import (
-                set_global_variable, 
+                set_global_variable,
                 get_global_variable
             )
             self._set_global_variable = set_global_variable
