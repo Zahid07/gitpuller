@@ -10,7 +10,7 @@ from .slack_notifier import SlackNotifier
 from .utils import transform_custom, get_repo_path, get_env_base_path
 
 
-__version__ = "1.1.0"
+__version__ = "1.1.2"
 __all__ = [
     "GitPullExecutor",
     "AlertManager",
