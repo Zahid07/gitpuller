@@ -254,7 +254,8 @@ class GitPullExecutor:
         pipeline_uuid: str = "auto_git_pull",
         suppression_hours: int = 1,
         key_filename: Optional[str] = None,
-        ssh_dir: str = "/home/src/.ssh"
+        ssh_dir: str = "/home/src/.ssh",
+        webhook_url: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Run :meth:`execute_git_pull` and, on failure, send a (de-duplicated)
@@ -263,6 +264,7 @@ class GitPullExecutor:
         ``suppression_hours`` caps how often the *same* error is alerted on,
         avoiding Slack spam when a broken state persists across many runs.
         """
+        notifier = SlackNotifier(webhook_url=webhook_url) if webhook_url else self.slack_notifier
         # Derive a friendly repo name (e.g. "partner-mageai") for the alert.
         repo_name = git_url.split('/')[-1].replace('.git', '')
 
@@ -298,7 +300,7 @@ class GitPullExecutor:
 
             if should_alert:
                 # Post to Slack (cap payload so we don't blow Slack's limits).
-                self.slack_notifier.send_alert(repo_name, git_output[:1500])
+                notifier.send_alert(repo_name, git_output[:1500])
 
                 # Record that we alerted so future identical errors are suppressed.
                 self.alert_manager.save_alert_state(
