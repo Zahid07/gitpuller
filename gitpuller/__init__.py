@@ -1,3 +1,8 @@
+"""gitpuller — auto-pull a git repo over SSH inside Mage pipelines.
+
+Public API is re-exported here so callers can ``from gitpuller import ...``.
+"""
+
 from .gitpull import GitPullExecutor
 from .alert_manager import AlertManager
 from .state_manager import StateManager, InMemoryStateManager, MageAIStateManager

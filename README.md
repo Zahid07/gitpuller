@@ -46,9 +46,8 @@ state to persist across pipeline runs (see [State management](#state-management)
 from gitpuller import GitPullExecutor
 
 executor = GitPullExecutor(
-    use_mage_ai=True,  # persist alert state via Mage
-    # Slack: set CDM_PROD_SLACK_BOT_TOKEN (threaded daily alerts).
-    # Optional: CDM_PROD_DB_SLACK_CHANNEL (defaults to C05MLHR55JT).
+    slack_webhook_url="https://hooks.slack.com/services/XXX",  # or set CDM_SLACK_WEBHOOK_URL
+    use_mage_ai=True,                                          # persist alert state via Mage
 )
 
 result = executor.execute_with_alerting(
@@ -63,8 +62,7 @@ print(result["discarded_changes"])   # what local drift (if any) was wiped
 ```
 
 On failure, `execute_with_alerting` sends a Slack alert (subject to suppression)
-as a **reply in today's daily thread**, then **re-raises**, so the Mage pipeline
-still fails loudly.
+and then **re-raises**, so the Mage pipeline still fails loudly.
 
 ---
 
@@ -106,55 +104,13 @@ and exit code**, which becomes the Slack alert body and the pipeline error.
 
 ## API
 
-### `GitPullExecutor(slack_webhook_url=None, slack_bot_token=None, slack_channel=None, use_mage_ai=False, state_manager=None)`
+### `GitPullExecutor(slack_webhook_url=None, use_mage_ai=False, state_manager=None)`
 
 | Param | Description |
 |-------|-------------|
-| `slack_bot_token` | Slack bot token (`xoxb-...`). Falls back to `CDM_PROD_SLACK_BOT_TOKEN`. Preferred — enables daily-thread replies. |
-| `slack_channel` | Channel ID/name. Falls back to `CDM_PROD_DB_SLACK_CHANNEL`, then `C05MLHR55JT`. |
-| `slack_webhook_url` | Incoming-webhook URL. Falls back to `CDM_SLACK_WEBHOOK_URL`. Used only when no bot token is set (no threading). |
+| `slack_webhook_url` | Slack incoming-webhook URL. Falls back to the `CDM_SLACK_WEBHOOK_URL` env var. Required (one of the two must be set). |
 | `use_mage_ai` | If `True`, persist alert-suppression state via Mage global variables (falls back to in-memory if Mage isn't installed). |
 | `state_manager` | Inject a custom `StateManager`; overrides `use_mage_ai`. |
-
-If neither a bot token nor a webhook is configured, gitpuller still runs and
-prints a warning instead of failing construction.
-
-### Slack daily thread
-
-When `CDM_PROD_SLACK_BOT_TOKEN` is set, failures are posted with `chat.postMessage`:
-
-1. Open (or reuse) one parent message **per workspace per calendar day**:
-   `🚨 Git Pull Failures {workspace_name} — YYYY-MM-DD`.
-2. Post each later failure for that workspace as a **thread reply**.
-
-Daily `thread_ts` values are stored in **one unified Redis hash** shared by every
-Mage workspace (the key is **not** prefixed with `MAGE_WORKSPACE_NAME`):
-
-```text
-gitpuller:slack_thread:{channel}:{YYYY-MM-DD}
-  cloud_data  → JSON { workspace, thread_ts, errors: [{workspace, repo, error, at, reply_ts}, ...] }
-  partner     → JSON { workspace, thread_ts, errors: [...] }
-TTL: until midnight (CDM_SLACK_THREAD_TZ, default UTC)
-```
-
-Each workspace keeps the Slack parent `thread_ts` plus up to 20 git errors
-from that day (error text capped at 1500 chars). Legacy plain `thread_ts`
-strings are still read.
-
-Redis comes from Mage `io_config.yaml` (`REDIS_HOST` / `REDIS_PORT` /
-`REDIS_PASSWORD`), or those same env vars. If Redis is unavailable, gitpuller
-falls back to Slack `conversations.history`.
-
-| Env var | Role |
-|---------|------|
-| `CDM_PROD_SLACK_BOT_TOKEN` | Required for threading. |
-| `CDM_PROD_DB_SLACK_CHANNEL` | Channel; default `C05MLHR55JT`. |
-| `CDM_SLACK_THREAD_TZ` | Timezone for the daily parent date; default `UTC`. |
-| `CDM_PAUSE_SLACK_MESSAGES` | Set to `1` to skip Slack. |
-| `CDM_SLACK_WEBHOOK_URL` | Legacy fallback when no bot token is set. |
-
-The bot must be in the channel (`chat:write`). History reuse also needs
-`channels:history` (or `groups:history` for a private channel).
 
 ### `execute_with_alerting(...)` → `dict`
 
@@ -171,7 +127,6 @@ Runs the sync and, on failure, alerts Slack (with suppression) then re-raises.
 | `suppression_hours` | `1` | Don't re-alert on the *same* error within this many hours. |
 | `key_filename` | `None` | Override the on-disk key filename. |
 | `ssh_dir` | `"/home/src/.ssh"` | Directory to write the key into. |
-| `webhook_url` | `None` | Legacy webhook override for this call. Ignored when a bot token is configured. |
 
 ### `execute_git_pull(...)` → `dict`
 
@@ -255,21 +210,7 @@ Keep the version in sync in **both** `pyproject.toml` and `gitpuller/__init__.py
 
 ## Changelog
 
-### 1.2.0 (current)
-
-- **Threaded Slack alerts.** Failures post as replies under one daily parent
-  **per workspace** (`🚨 Git Pull Failures {workspace} — YYYY-MM-DD`) via
-  `CDM_PROD_SLACK_BOT_TOKEN` and `CDM_PROD_DB_SLACK_CHANNEL`
-  (default `C05MLHR55JT`). Daily `thread_ts` lives in one unified Redis hash
-  (`gitpuller:slack_thread:{channel}:{YYYY-MM-DD}`, field = workspace, TTL
-  until midnight) shared across all Mage workspaces. Each workspace field is
-  JSON: `thread_ts` plus that day's git errors.
-- Incoming webhooks (`CDM_SLACK_WEBHOOK_URL` / `slack_webhook_url`) remain as a
-  non-threaded fallback when no bot token is set.
-- Missing Slack credentials no longer raise on `GitPullExecutor` construction;
-  alerts are skipped with a warning.
-
-### 1.1.0
+### 1.1.0 (current)
 
 Reliability and clarity overhaul.
 
