@@ -22,11 +22,17 @@ class GitPullExecutor:
     def __init__(
         self,
         slack_webhook_url: Optional[str] = None,
+        slack_bot_token: Optional[str] = None,
+        slack_channel: Optional[str] = None,
         use_mage_ai: bool = False,
         state_manager: Optional[Any] = None
     ):
-        # Slack sink for failure alerts.
-        self.slack_notifier = SlackNotifier(webhook_url=slack_webhook_url)
+        # Slack sink for failure alerts (bot token + daily thread preferred).
+        self.slack_notifier = SlackNotifier(
+            webhook_url=slack_webhook_url,
+            bot_token=slack_bot_token,
+            channel=slack_channel,
+        )
         # Decides whether/when to alert (de-duplicates repeated identical errors).
         self.alert_manager = AlertManager(state_manager=state_manager, use_mage_ai=use_mage_ai)
 
@@ -264,7 +270,12 @@ class GitPullExecutor:
         ``suppression_hours`` caps how often the *same* error is alerted on,
         avoiding Slack spam when a broken state persists across many runs.
         """
-        notifier = SlackNotifier(webhook_url=webhook_url) if webhook_url else self.slack_notifier
+        # webhook_url is a fallback only; CDM_PROD_SLACK_BOT_TOKEN still wins
+        # so Mage callers that pass CDM_SLACK_WEBHOOK_URL stay on the daily thread.
+        if webhook_url and not self.slack_notifier.bot_token:
+            notifier = SlackNotifier(webhook_url=webhook_url)
+        else:
+            notifier = self.slack_notifier
         # Derive a friendly repo name (e.g. "partner-mageai") for the alert.
         repo_name = git_url.split('/')[-1].replace('.git', '')
 
@@ -300,7 +311,11 @@ class GitPullExecutor:
 
             if should_alert:
                 # Post to Slack (cap payload so we don't blow Slack's limits).
-                notifier.send_alert(repo_name, git_output[:1500])
+                notifier.send_alert(
+                    repo_name,
+                    git_output[:1500],
+                    workspace_name=workspace_name,
+                )
 
                 # Record that we alerted so future identical errors are suppressed.
                 self.alert_manager.save_alert_state(
