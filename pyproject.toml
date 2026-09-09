@@ -4,14 +4,17 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "salla_gitpuller"
-version = "1.0.1"
+version = "1.2.0"
 description = "A lightweight utility to git pull a repository using SSH deploy keys stored in environment variables"
 readme = "README.md"
 authors = [
+  { name="Mohammed Junaid", email="safijunaid.ss@gmail.com" },
   { name="Muhammad Zahid", email="zahidmuhammad127@gmail.com" }
 ]
 license = { text = "MIT" }
-dependencies = []
+dependencies = [
+  "requests>=2.20",
+]
 
 [project.urls]
 Homepage = "https://github.com/Zahid07/gitpuller"
